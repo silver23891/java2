@@ -7,10 +7,14 @@ public class GameCanvas extends JPanel {
 
     MainCircles listener;
     long lastFrameTime;
+    long startTime;
+    Background background;
 
     GameCanvas(MainCircles listener) {
         this.listener = listener;
+        this.startTime = System.nanoTime();
         lastFrameTime = System.nanoTime();
+        background = new Background();
     }
 
     @Override
@@ -18,6 +22,7 @@ public class GameCanvas extends JPanel {
         super.paintComponent(g);
         //60 frames per second
         long currentTime = System.nanoTime();
+        this.setBackground(background.getBackgroundColor(currentTime-startTime));
         float deltaTime = (currentTime - lastFrameTime) * 0.000000001f;
         lastFrameTime = currentTime;
         listener.onCanvasRepainted(this, g, deltaTime);
