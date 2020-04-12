@@ -28,9 +28,8 @@ public class Main {
                 new Person("vasiliev", "  ", "")
         };
         PhoneBook book = new PhoneBook(persons);
-        System.out.println(book);
-        System.out.println(book.getBySurname("ivanov", book.PHONE_KEY));
-        System.out.println(book.getBySurname("ivanov", book.EMAIL_KEY));
+        System.out.println(book.getPhoneBySurname("ivanov"));
+        System.out.println(book.getEmailBySurname("petrov"));
     }
 
     /**
