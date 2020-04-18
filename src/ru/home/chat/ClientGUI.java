@@ -8,7 +8,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.IOException;
 
-public class ClientGUI extends JFrame implements ActionListener, KeyListener, Thread.UncaughtExceptionHandler {
+public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler {
 
     private static final int WIDTH = 400;
     private static final int HEIGHT = 300;
@@ -63,7 +63,7 @@ public class ClientGUI extends JFrame implements ActionListener, KeyListener, Th
         log.setEditable(false);
         cbAlwaysOnTop.addActionListener(this);
         btnSend.addActionListener(this);
-        tfMessage.addKeyListener(this);
+        tfMessage.addActionListener(this);
 
         panelTop.add(tfIPAddress);
         panelTop.add(tfPort);
@@ -87,7 +87,7 @@ public class ClientGUI extends JFrame implements ActionListener, KeyListener, Th
         Object src = e.getSource();
         if (src == cbAlwaysOnTop) {
             setAlwaysOnTop(cbAlwaysOnTop.isSelected());
-        } else if (src == btnSend) {
+        } else if (src == btnSend || src == tfMessage) {
             sendMessage();
         } else {
             throw new RuntimeException("Unknown source:" + src);
@@ -110,19 +110,6 @@ public class ClientGUI extends JFrame implements ActionListener, KeyListener, Th
             }
         }
         System.exit(1);
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {}
-
-    @Override
-    public void keyPressed(KeyEvent e) {}
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-        if (e.getKeyCode() == 10) {
-            sendMessage();
-        }
     }
 
     private void sendMessage() {
