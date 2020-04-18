@@ -4,6 +4,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.io.IOException;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler {
 
@@ -26,8 +29,11 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     private final JList<String> userList = new JList<>();
 
+    ChatLog chatLog;
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
+
             @Override
             public void run() {
                 new ClientGUI();
@@ -36,6 +42,11 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     }
 
     ClientGUI() {
+        try {
+            chatLog = new ChatLog("client.log");
+        } catch (IOException e) {
+            uncaughtException(Thread.currentThread(), e);
+        }
         Thread.setDefaultUncaughtExceptionHandler(this);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -51,6 +62,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         log.setWrapStyleWord(true);
         log.setEditable(false);
         cbAlwaysOnTop.addActionListener(this);
+        btnSend.addActionListener(this);
+        tfMessage.addActionListener(this);
 
         panelTop.add(tfIPAddress);
         panelTop.add(tfPort);
@@ -74,6 +87,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         Object src = e.getSource();
         if (src == cbAlwaysOnTop) {
             setAlwaysOnTop(cbAlwaysOnTop.isSelected());
+        } else if (src == btnSend || src == tfMessage) {
+            sendMessage();
         } else {
             throw new RuntimeException("Unknown source:" + src);
         }
@@ -87,6 +102,34 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         msg = String.format("Exception in \"%s\" %s: %s\n\tat %s",
                 t.getName(), e.getClass().getCanonicalName(), e.getMessage(), ste[0]);
         JOptionPane.showMessageDialog(this, msg, "Exception", JOptionPane.ERROR_MESSAGE);
+        if (chatLog != null) {
+            try {
+                chatLog.closeLog();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        }
         System.exit(1);
+    }
+
+    private void sendMessage() {
+        if (tfMessage.getText().length() == 0) {
+            return;
+        }
+        addLog(log, tfLogin.getText(), tfMessage.getText());
+        tfMessage.setText("");
+    }
+
+    private void addLog(JTextArea ta,String user, String message) {
+        if (ta.getText().length() > 0) {
+            ta.append("\n");
+        }
+        String msg = String.format("%s:\n%s\n", user, message);
+        ta.append(msg);
+        try {
+            chatLog.addLogMessage(msg);
+        } catch (Exception e) {
+            uncaughtException(Thread.currentThread(), e);
+        }
     }
 }
