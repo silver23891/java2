@@ -109,8 +109,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     private void disconnect() {
         socketThread.close();
-        panelTop.setVisible(true);
-        panelBottom.setVisible(false);
     }
 
     private void sendMessage() {
