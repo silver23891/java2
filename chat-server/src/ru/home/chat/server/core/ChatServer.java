@@ -1,5 +1,6 @@
 package ru.home.chat.server.core;
 
+import ru.home.chat.common.Library;
 import ru.home.network.ServerSocketThread;
 import ru.home.network.ServerSocketThreadListener;
 import ru.home.network.SocketThread;
@@ -12,7 +13,12 @@ import java.util.Vector;
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
 
     ServerSocketThread server;
-    Vector<SocketThread> clientThreads = new Vector<>();
+    ChatServerListener listener;
+    Vector<SocketThread> clients = new Vector<>();
+
+    public ChatServer(ChatServerListener listener) {
+        this.listener = listener;
+    }
 
     public void start(int port) {
         if (server != null && server.isAlive())
@@ -30,7 +36,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     private void putLog(String msg) {
-        System.out.println(msg);
+        listener.onChatServerMessage(msg);
     }
 
     /**
@@ -40,6 +46,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onServerStarted(ServerSocketThread thread) {
         putLog("Server thread started");
+        SqlClient.connect();
     }
 
     @Override
@@ -56,7 +63,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     public void onSocketAccepted(ServerSocketThread thread, ServerSocket server, Socket socket) {
         putLog("Client connected");
         String name = "SocketThread " + socket.getInetAddress() + ":" + socket.getPort();
-        new SocketThread(this, name, socket);
+        new ClientThread(this, name, socket);
     }
 
     @Override
@@ -68,10 +75,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onServerStop(ServerSocketThread thread) {
         putLog("Server thread stopped");
-        for (int i = 0; i < clientThreads.size(); i++) {
-            clientThreads.get(i).sendMessage("Сервер завершает работу..");
-            clientThreads.get(i).close();
-        }
+        SqlClient.disconnect();
     }
 
     /**
@@ -86,21 +90,59 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onSocketStop(SocketThread thread) {
         putLog("Socket stopped");
+        clients.remove(thread);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Socket ready");
-        clientThreads.add(thread);
+        clients.add(thread);
     }
 
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String msg) {
-        thread.sendMessage("echo: " + msg);
+        ClientThread client = (ClientThread) thread;
+        if (client.isAuthorized()) {
+            handleAuthMessage(client, msg);
+        } else
+            handleNonAuthMessage(client, msg);
     }
 
     @Override
     public void onSocketException(SocketThread thread, Throwable throwable) {
         throwable.printStackTrace();
+    }
+
+    void handleAuthMessage(ClientThread client, String msg) {
+        sendToAllAuthorizedClients(msg);
+    }
+
+    void handleNonAuthMessage(ClientThread client, String msg) {
+        String[] arr = msg.split(Library.DELIMITER);
+        if (arr.length != 3 || !arr[0].equals(Library.AUTH_REQUEST)) {
+            client.msgFormatError(msg);
+            return;
+        }
+        String login = arr[1];
+        String password = arr[2];
+        String nickname = SqlClient.getNickname(login, password);
+        if (nickname == null) {
+            putLog("Invalid login attempt: " + login);
+            client.authFail();
+            return;
+        }
+        client.authAccept(nickname);
+        sendToAllAuthorizedClients(Library.getTypeBroadcast("Server", nickname + " connected"));
+    }
+
+    private void sendToAllAuthorizedClients(String msg) {
+        for (int i = 0; i < clients.size(); i++) {
+            ClientThread client = (ClientThread) clients.get(i);
+            if (!client.isAuthorized()) continue;
+            client.sendMessage(msg);
+        }
+    }
+
+    public void dropAllClients() {
     }
 }

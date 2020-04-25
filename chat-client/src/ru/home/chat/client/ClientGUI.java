@@ -1,9 +1,12 @@
 package ru.home.chat.client;
 
+import ru.home.chat.common.Library;
 import ru.home.network.SocketThread;
 import ru.home.network.SocketThreadListener;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -73,12 +76,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         panelBottom.add(btnDisconnect, BorderLayout.WEST);
         panelBottom.add(tfMessage, BorderLayout.CENTER);
         panelBottom.add(btnSend, BorderLayout.EAST);
+        panelBottom.setVisible(false);
 
         add(scrUser, BorderLayout.EAST);
         add(scrLog, BorderLayout.CENTER);
         add(panelTop, BorderLayout.NORTH);
         add(panelBottom, BorderLayout.SOUTH);
-        panelBottom.setVisible(false);
         setVisible(true);
     }
 
@@ -92,7 +95,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } else if (src == btnLogin) {
             connect();
         } else if (src == btnDisconnect) {
-            disconnect();
+            socketThread.close();
         } else {
             throw new RuntimeException("Unknown source:" + src);
         }
@@ -105,10 +108,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
-    }
-
-    private void disconnect() {
-        socketThread.close();
     }
 
     private void sendMessage() {
@@ -170,21 +169,24 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
 
     @Override
     public void onSocketStart(SocketThread thread, Socket socket) {
-        panelTop.setVisible(false);
-        panelBottom.setVisible(true);
         putLog("Start");
     }
 
     @Override
     public void onSocketStop(SocketThread thread) {
-        panelTop.setVisible(true);
-        panelBottom.setVisible(false);
         putLog("Stop");
+        panelBottom.setVisible(false);
+        panelTop.setVisible(true);
     }
 
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Ready");
+        panelBottom.setVisible(true);
+        panelTop.setVisible(false);
+        String login = tfLogin.getText();
+        String password = new String(tfPassword.getPassword());
+        thread.sendMessage(Library.getAuthRequest(login, password));
     }
 
     @Override
