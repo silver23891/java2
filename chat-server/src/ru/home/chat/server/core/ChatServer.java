@@ -7,10 +7,12 @@ import ru.home.network.SocketThreadListener;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Vector;
 
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
 
     ServerSocketThread server;
+    Vector<SocketThread> clientThreads = new Vector<>();
 
     public void start(int port) {
         if (server != null && server.isAlive())
@@ -66,6 +68,10 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onServerStop(ServerSocketThread thread) {
         putLog("Server thread stopped");
+        for (int i = 0; i < clientThreads.size(); i++) {
+            clientThreads.get(i).sendMessage("Сервер завершает работу..");
+            clientThreads.get(i).close();
+        }
     }
 
     /**
@@ -85,6 +91,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Socket ready");
+        clientThreads.add(thread);
     }
 
     @Override
