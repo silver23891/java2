@@ -1,5 +1,11 @@
 package ru.home.chat.common;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+
 public class Library {
     /*
     * /auth_request±login±password
@@ -38,6 +44,38 @@ public class Library {
     public static String getTypeBroadcast(String src, String message) {
         return TYPE_BROADCAST + DELIMITER + System.currentTimeMillis() +
                 DELIMITER + src + DELIMITER + message;
+    }
+
+    public static HashMap<String, String> getMessageParams(String message) {
+        HashMap<String, String> hashMap = new HashMap<>();
+        String[] messageParts = message.split(DELIMITER);
+        if (messageParts[0].equals(AUTH_REQUEST) && messageParts.length == 3) {
+            hashMap.put("type", AUTH_REQUEST);
+            hashMap.put("login", messageParts[1]);
+            hashMap.put("password", messageParts[2]);
+        } else if (messageParts[0].equals(AUTH_ACCEPT) && messageParts.length == 2) {
+            hashMap.put("type", AUTH_ACCEPT);
+            hashMap.put("login", messageParts[1]);
+            hashMap.put("clientMessage", "Успешный вход под пользователем " + messageParts[1]);
+        } else if (messageParts[0].equals(AUTH_DENIED)) {
+            hashMap.put("type", AUTH_DENIED);
+            hashMap.put("clientMessage", "Неверное имя пользователя или пароль");
+        } else if (messageParts[0].equals(MSG_FORMAT_ERROR) && messageParts.length == 2) {
+            hashMap.put("type", MSG_FORMAT_ERROR);
+            hashMap.put("clientMessage", "Ошибка в формате сообщения: " + messageParts[1]);
+        } else if (messageParts[0].equals(TYPE_BROADCAST) && messageParts.length == 4) {
+            hashMap.put("type", TYPE_BROADCAST);
+            Date date = new Date(Long.parseLong(messageParts[1]));
+            SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+            hashMap.put(
+                    "clientMessage",
+                    String.format("%s Сообщение от %s:\n%s", sdf.format(date), messageParts[2], messageParts[3])
+            );
+        } else {
+            hashMap.put("type", "unknown");
+            hashMap.put("clientMessage", message);
+        }
+        return hashMap;
     }
 
 }
