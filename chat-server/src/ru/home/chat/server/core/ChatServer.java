@@ -15,6 +15,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     ServerSocketThread server;
     ChatServerListener listener;
     Vector<SocketThread> clients = new Vector<>();
+    final long UNAUTHORIZED_TIMEOUT = 120000;
 
     public ChatServer(ChatServerListener listener) {
         this.listener = listener;
@@ -57,6 +58,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     @Override
     public void onServerTimeout(ServerSocketThread thread, ServerSocket server) {
         //putLog("Server timeout");
+        dropUnauthorizedClients();
     }
 
     @Override
@@ -103,6 +105,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     public synchronized void onSocketReady(SocketThread thread, Socket socket) {
         putLog("Socket ready");
         clients.add(thread);
+        ((ClientThread) thread).setSocketReadyTime();
     }
 
     @Override
@@ -193,5 +196,16 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
                 return client;
         }
         return null;
+    }
+
+    private void dropUnauthorizedClients() {
+        for (int i = 0; i < clients.size(); i++) {
+            ClientThread client = (ClientThread) clients.get(i);
+            if (client.isAuthorized() ||
+                    (System.currentTimeMillis() - client.getSocketReadyTime()) < UNAUTHORIZED_TIMEOUT) {
+                continue;
+            }
+            client.close();
+        }
     }
 }
