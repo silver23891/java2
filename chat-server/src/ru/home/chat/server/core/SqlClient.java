@@ -29,6 +29,19 @@ public class SqlClient {
         return null;
     }
 
+    synchronized static boolean updateNickname(String login, String newLogin) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("update users set login=? where login=?");
+            statement.setString(1, newLogin);
+            statement.setString(2, login);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     synchronized static void disconnect() {
         try {
             connection.close();

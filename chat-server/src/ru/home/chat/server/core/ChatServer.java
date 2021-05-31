@@ -130,6 +130,13 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
                 sendToAllAuthorizedClients(Library.getTypeBroadcast(
                         client.getNickname(), arr[1]));
                 break;
+            case Library.CHANGE_LOGIN_REQUEST:
+                if (changeLogin(arr[1], arr[2])) {
+                    client.sendMessage(Library.getChangeLoginSuccess(arr[2]));
+                } else {
+                    client.sendMessage(Library.getChangeLoginError(arr[2]));
+                }
+                break;
             default:
                 client.sendMessage(Library.getMsgFormatError(msg));
         }
@@ -207,5 +214,9 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
             }
             client.close();
         }
+    }
+
+    private boolean changeLogin(String login, String newLogin) {
+        return SqlClient.updateNickname(login, newLogin);
     }
 }
