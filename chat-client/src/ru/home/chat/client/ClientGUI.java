@@ -5,8 +5,6 @@ import ru.home.network.SocketThread;
 import ru.home.network.SocketThreadListener;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -30,6 +28,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JTextField tfLogin = new JTextField("ivan");
     private final JPasswordField tfPassword = new JPasswordField("123");
     private final JButton btnLogin = new JButton("Login");
+    private final JButton btnChangeLogin = new JButton("<html><b>Change Login</b></html>");
 
     private final JPanel panelBottom = new JPanel(new BorderLayout());
     private final JButton btnDisconnect = new JButton("<html><b>Disconnect</b></html>");
@@ -73,6 +72,7 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         btnSend.addActionListener(this);
         btnLogin.addActionListener(this);
         btnDisconnect.addActionListener(this);
+        btnChangeLogin.addActionListener(this);
 
         panelTop.add(tfIPAddress);
         panelTop.add(tfPort);
@@ -80,9 +80,11 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         panelTop.add(tfLogin);
         panelTop.add(tfPassword);
         panelTop.add(btnLogin);
+
         panelBottom.add(btnDisconnect, BorderLayout.WEST);
         panelBottom.add(tfMessage, BorderLayout.CENTER);
         panelBottom.add(btnSend, BorderLayout.EAST);
+        panelBottom.add(btnChangeLogin, BorderLayout.SOUTH);
         panelBottom.setVisible(false);
 
         add(scrUser, BorderLayout.EAST);
@@ -103,6 +105,8 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             connect();
         } else if (src == btnDisconnect) {
             socketThread.close();
+        } else if (src == btnChangeLogin) {
+            changeLogin();
         } else {
             throw new RuntimeException("Unknown source:" + src);
         }
@@ -115,6 +119,14 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         } catch (IOException e) {
             showException(Thread.currentThread(), e);
         }
+    }
+
+    private void changeLogin() {
+        String newLogin = tfMessage.getText();
+        if (newLogin.equals("")) {
+            return;
+        }
+        socketThread.sendMessage(Library.getChangeLoginRequest(tfLogin.getText(), newLogin));
     }
 
     private void sendMessage() {
@@ -222,6 +234,12 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
             case Library.MSG_FORMAT_ERROR:
                 putLog(value);
                 socketThread.close();
+                break;
+            case Library.CHANGE_LOGIN_SUCCESS:
+                putLog("Login was successfully changed to " + arr[1]);
+                break;
+            case Library.CHANGE_LOGIN_ERROR:
+                putLog("Error changing login to " + arr[1]);
                 break;
             case Library.TYPE_BROADCAST:
                 putLog(DATE_FORMAT.format(Long.parseLong(arr[1])) +
