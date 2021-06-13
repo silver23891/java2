@@ -8,15 +8,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 
 public class ClientGUI extends JFrame implements ActionListener, Thread.UncaughtExceptionHandler, SocketThreadListener {
-
     private static final int WIDTH = 400;
     private static final int HEIGHT = 300;
 
@@ -41,6 +39,9 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss: ");
     private final String WINDOW_TITLE = "Chat";
 
+    private final int LOG_HISTORY_SIZE = 100;
+    private File logFile;
+    DataOutputStream outputStream;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
@@ -58,9 +59,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         setSize(WIDTH, HEIGHT);
         setAlwaysOnTop(true);
         setTitle(WINDOW_TITLE);
-//        userList.setListData(new String[]{"user1", "user2", "user3", "user4",
-//                "user5", "user6", "user7", "user8", "user9",
-//                "user-with-exceptionally-long-name-in-this-chat"});
         JScrollPane scrUser = new JScrollPane(userList);
         JScrollPane scrLog = new JScrollPane(log);
         scrUser.setPreferredSize(new Dimension(100, 0));
@@ -92,6 +90,30 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         add(panelTop, BorderLayout.NORTH);
         add(panelBottom, BorderLayout.SOUTH);
         setVisible(true);
+    }
+
+    private void loadLocalLog() {
+        if (!logFile.exists()) {
+            return;
+        }
+        try (LineNumberReader lineCountReader = new LineNumberReader(new FileReader(logFile))) {
+            while(lineCountReader.readLine() != null);
+            int rowCount = lineCountReader.getLineNumber();
+            lineCountReader.close();
+            LineNumberReader reader = new LineNumberReader(new FileReader(logFile));
+            String line = "";
+            while ((line = reader.readLine()) != null) {
+                if (reader.getLineNumber() < rowCount-LOG_HISTORY_SIZE) {
+                    continue;
+                }
+                log.append(line + System.lineSeparator());
+                log.setCaretPosition(log.getDocument().getLength());
+            }
+            reader.close();
+
+        } catch (IOException e) {
+            System.out.println("Ошибка при открытии лог-файла");
+        }
     }
 
     @Override
@@ -136,24 +158,19 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         tfMessage.setText(null);
         tfMessage.requestFocusInWindow();
         socketThread.sendMessage(Library.getTypeBcastClient(msg));
-        //putLog(String.format("%s: %s", username, msg));
-        //wrtMsgToLogFile(msg, username);
-    }
-
-    private void wrtMsgToLogFile(String msg, String username) {
-        try (FileWriter out = new FileWriter("log.txt", true)) {
-            out.write(username + ": " + msg + System.lineSeparator());
-            out.flush();
-        } catch (IOException e) {
-            if (!shownIoErrors) {
-                shownIoErrors = true;
-                showException(Thread.currentThread(), e);
-            }
-        }
     }
 
     private void putLog(String msg) {
         if ("".equals(msg)) return;
+
+        if (outputStream != null) {
+            try {
+                outputStream.writeChars(msg + System.lineSeparator());
+            } catch (IOException e) {
+                System.out.println("Ошибка записи в лог-файл");
+            }
+        }
+
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -194,6 +211,13 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onSocketStop(SocketThread thread) {
         putLog("Stop");
+        if (outputStream != null) {
+            try {
+                outputStream.close();
+            } catch (IOException e) {
+                System.out.println("Ошибка при закрытии лог-файла");
+            }
+        }
         panelBottom.setVisible(false);
         panelTop.setVisible(true);
         setTitle(WINDOW_TITLE);
@@ -213,7 +237,6 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
     @Override
     public void onReceiveString(SocketThread thread, Socket socket, String msg) {
         handleMessage(msg);
-
     }
 
     @Override
@@ -227,6 +250,13 @@ public class ClientGUI extends JFrame implements ActionListener, Thread.Uncaught
         switch (msgType) {
             case Library.AUTH_ACCEPT:
                 setTitle(WINDOW_TITLE + " authorized with nickname " + arr[1]);
+                logFile = new File(arr[1] + ".log");
+                loadLocalLog();
+                try {
+                    outputStream = new DataOutputStream(new FileOutputStream(logFile, true));
+                } catch (IOException e) {
+                    System.out.println("Ошибка при открытии лог-файла");
+                }
                 break;
             case Library.AUTH_DENIED:
                 putLog(value);
