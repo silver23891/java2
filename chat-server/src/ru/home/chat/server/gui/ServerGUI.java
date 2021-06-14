@@ -22,6 +22,8 @@ public class ServerGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JTextArea log = new JTextArea();
 
     public static void main(String[] args) {
+        ABC abc = new ABC();
+        abc.printABC();
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() { // Event Dispatching Thread

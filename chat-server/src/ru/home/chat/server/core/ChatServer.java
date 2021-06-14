@@ -9,10 +9,13 @@ import ru.home.network.SocketThreadListener;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class ChatServer implements ServerSocketThreadListener, SocketThreadListener {
-
-    ServerSocketThread server;
+    ExecutorService server = Executors.newSingleThreadExecutor();
+    Future<?> serverStatus;
     ChatServerListener listener;
     Vector<SocketThread> clients = new Vector<>();
     final long UNAUTHORIZED_TIMEOUT = 120000;
@@ -22,17 +25,20 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     public void start(int port) {
-        if (server != null && server.isAlive())
+        if (serverStatus != null && !serverStatus.isDone()) {
             putLog("Already running");
-        else
-            server = new ServerSocketThread(this, "Server", port, 2000);
+        } else {
+            serverStatus = server.submit(new ServerSocketThread(this, "Server", port, 2000));
+        }
     }
 
     public void stop() {
-        if (server == null || !server.isAlive()) {
+        if (serverStatus == null || serverStatus.isDone()) {
             putLog("Nothing to stop");
         } else {
-            server.interrupt();
+            //Евгений, не могу понять почему не останавливается поток. В дебагере interrupted устанавливается в true
+            //Подскажите, пожалуйста
+            server.shutdownNow();
         }
     }
 
