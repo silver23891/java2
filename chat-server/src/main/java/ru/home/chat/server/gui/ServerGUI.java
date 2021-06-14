@@ -1,5 +1,8 @@
 package ru.home.chat.server.gui;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.home.chat.server.core.ChatServer;
 import ru.home.chat.server.core.ChatServerListener;
 
@@ -20,6 +23,8 @@ public class ServerGUI extends JFrame implements ActionListener, Thread.Uncaught
     private final JButton btnStop = new JButton("Stop");
     private final JPanel panelTop = new JPanel(new GridLayout(1, 2));
     private final JTextArea log = new JTextArea();
+
+    private final Logger logger = LogManager.getLogger(ServerGUI.class);
 
     public static void main(String[] args) {
         ABC abc = new ABC();
@@ -78,10 +83,11 @@ public class ServerGUI extends JFrame implements ActionListener, Thread.Uncaught
     }
 
     @Override
-    public void onChatServerMessage(String msg) {
+    public void onChatServerMessage(Level level, String msg) {
         SwingUtilities.invokeLater(() -> {
             log.append(msg + "\n");
             log.setCaretPosition(log.getDocument().getLength());
         });
+        logger.log(level, msg);
     }
 }

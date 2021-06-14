@@ -1,11 +1,16 @@
 package ru.home.chat.server.core;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.home.chat.common.Library;
 import ru.home.network.ServerSocketThread;
 import ru.home.network.ServerSocketThreadListener;
 import ru.home.network.SocketThread;
 import ru.home.network.SocketThreadListener;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
@@ -19,6 +24,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     ChatServerListener listener;
     Vector<SocketThread> clients = new Vector<>();
     final long UNAUTHORIZED_TIMEOUT = 120000;
+    Logger logger = LogManager.getLogger(ChatServer.class);
 
     public ChatServer(ChatServerListener listener) {
         this.listener = listener;
@@ -26,7 +32,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     public void start(int port) {
         if (serverStatus != null && !serverStatus.isDone()) {
-            putLog("Already running");
+            putLog(Level.INFO, "Already running");
         } else {
             serverStatus = server.submit(new ServerSocketThread(this, "Server", port, 2000));
         }
@@ -34,7 +40,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     public void stop() {
         if (serverStatus == null || serverStatus.isDone()) {
-            putLog("Nothing to stop");
+            putLog(Level.INFO, "Nothing to stop");
         } else {
             //Евгений, не могу понять почему не останавливается поток. В дебагере interrupted устанавливается в true
             //Подскажите, пожалуйста
@@ -42,8 +48,8 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
         }
     }
 
-    private void putLog(String msg) {
-        listener.onChatServerMessage(msg);
+    private void putLog(Level level, String msg) {
+        listener.onChatServerMessage(level, msg);
     }
 
     /**
@@ -52,37 +58,35 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public void onServerStarted(ServerSocketThread thread) {
-        putLog("Server thread started");
+        putLog(Level.INFO, "Server thread started");
         SqlClient.connect();
     }
 
     @Override
     public void onServerCreated(ServerSocketThread thread, ServerSocket server) {
-        putLog("Server socket started");
+        putLog(Level.INFO, "Server socket started");
     }
 
     @Override
     public void onServerTimeout(ServerSocketThread thread, ServerSocket server) {
-        //putLog("Server timeout");
         dropUnauthorizedClients();
     }
 
     @Override
     public void onSocketAccepted(ServerSocketThread thread, ServerSocket server, Socket socket) {
-        putLog("Client connected");
+        putLog(Level.INFO, "Client connected");
         String name = "SocketThread " + socket.getInetAddress() + ":" + socket.getPort();
         new ClientThread(this, name, socket);
     }
 
     @Override
     public void onServerException(ServerSocketThread thread, Throwable throwable) {
-        putLog("Server exception");
-        throwable.printStackTrace();
+        putLog(Level.ERROR, throwable.getCause().getMessage());
     }
 
     @Override
     public void onServerStop(ServerSocketThread thread) {
-        putLog("Server thread stopped");
+        putLog(Level.INFO, "Server thread stopped");
         dropAllClients();
         SqlClient.disconnect();
     }
@@ -93,7 +97,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public synchronized void onSocketStart(SocketThread thread, Socket socket) {
-        putLog("Socket started");
+        putLog(Level.INFO, "Socket started");
     }
 
     @Override
@@ -109,7 +113,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public synchronized void onSocketReady(SocketThread thread, Socket socket) {
-        putLog("Socket ready");
+        putLog(Level.INFO, "Socket ready");
         clients.add(thread);
         ((ClientThread) thread).setSocketReadyTime();
     }
@@ -125,10 +129,14 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
 
     @Override
     public synchronized void onSocketException(SocketThread thread, Throwable throwable) {
-        throwable.printStackTrace();
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        throwable.printStackTrace(printWriter);
+        putLog(Level.ERROR, stringWriter.toString());
     }
 
     void handleAuthMessage(ClientThread client, String msg) {
+        putLog(Level.INFO, "Receive message from " + client.getNickname() + ": " + msg);
         String[] arr = msg.split(Library.DELIMITER);
         String msgType = arr[0];
         switch (msgType) {
@@ -150,6 +158,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
     }
 
     void handleNonAuthMessage(ClientThread client, String msg) {
+        putLog(Level.INFO, "Receive unauthorized message: " + msg);
         String[] arr = msg.split(Library.DELIMITER);
         if (arr.length != 3 || !arr[0].equals(Library.AUTH_REQUEST)) {
             client.msgFormatError(msg);
@@ -159,7 +168,7 @@ public class ChatServer implements ServerSocketThreadListener, SocketThreadListe
         String password = arr[2];
         String nickname = SqlClient.getNickname(login, password);
         if (nickname == null) {
-            putLog("Invalid login attempt: " + login);
+            putLog(Level.WARN, "Invalid login attempt: " + login);
             client.authFail();
             return;
         } else {

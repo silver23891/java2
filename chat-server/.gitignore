@@ -1,2 +1,3 @@
-./chat-db.sqlite
+./*.sqlite
 *.iml
+target
