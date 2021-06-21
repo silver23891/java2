@@ -11,6 +11,20 @@ public class ArrayWorker {
     }
 
     public boolean arrayCorrect(List<Integer> input) {
-        return (input.contains(1) || input.contains(4));
+        if (input.size() == 0 || input.size()%2 > 0) {
+            return false;
+        }
+        int sum = 0;
+        for (Integer i: input) {
+            if (i == 1) {
+                sum += 1;
+                continue;
+            } else if (i == 4) {
+                sum -= 1;
+                continue;
+            }
+            return false;
+        }
+        return sum == 0;
     }
 }

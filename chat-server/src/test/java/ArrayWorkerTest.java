@@ -45,8 +45,11 @@ public class ArrayWorkerTest {
     void arrayCorrectTest() {
         Assertions.assertFalse(arrayWorker.arrayCorrect(new ArrayList<Integer>()));
         Assertions.assertFalse(arrayWorker.arrayCorrect(List.of(2, 3)));
-        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(1, 2, 3)));
-        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(2, 3, 4)));
-        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(1, 2, 3, 4)));
+        Assertions.assertFalse(arrayWorker.arrayCorrect(List.of(1)));
+        Assertions.assertFalse(arrayWorker.arrayCorrect(List.of(4)));
+        Assertions.assertFalse(arrayWorker.arrayCorrect(List.of(1, 4, 1)));
+        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(1, 4)));
+        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(1, 4, 4, 1)));
+        Assertions.assertTrue(arrayWorker.arrayCorrect(List.of(1, 1, 4, 4)));
     }
 }
